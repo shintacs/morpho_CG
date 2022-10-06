@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+<meta charset="utf-8">
+
+<title>butterflyDisplay</title>
+<script type="text/javascript" src="../libs/three.js"></script>
+<script type="text/javascript" src="../libs/PLYLoader.js"></script>
+<!--<script type="text/javascript" src="../libs/dat.gui.min.js"></script>-->
+<script type="text/javascript" src="../libs/lil-gui.module.min.js"></script>
+<script type="text/javascript" src="../libs/OrbitControls.js"></script>
+
+<style>
+	body{
+		margin: 0;
+		overflow: hidden;
+		background-color:#fff
+	}
+</style>
+
+</head>
+
+<body>
+<div id="WebGL-output">
+</div>
+
+<!-- javascriptコードは以下に入る -->
+
+<script type="text/javascript">
+	var camera;
+	var scene;
+	var renderer;
+
+	var group1;
+	var group2;
+	var group3;
+	var group4;
+
+	var upperWingR;
+	var upperWingL;
+	var lowerWingR;
+	var lowerWingL;
+
+	var abdSign = 1;
+	var heightSign = 1;
+	var textMesh;
+
+	//読み込み終了後three.js関連の処理を実行
+	function init() {
+	// three.js関連の処理はこちら
+
+	//アニメーション：requestAnimationFrameを用いる
+
+	  scene = new THREE.Scene();
+	  camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+	  renderer = new THREE.WebGLRenderer();
+	  renderer.setClearColor(new THREE.Color(0x00081a));
+		//renderer.setClearColor(new THREE.Color(0xeeeeee));
+	  renderer.setSize(window.innerWidth, window.innerHeight);
+	//shadowMap.enabledをtrueに設定
+	  renderer.shadowMap.enabled = true;
+
+	//座標軸をシーンに追加
+	  /*var axes = new THREE.AxisHelper(20);
+	  axes.position.y = 0.1;
+	  scene.add(axes);*/
+
+	//texture読み込み
+		var fdtMaterial = new THREE.MeshPhongMaterial({color: 0xcccccc});
+		var planeMaterial = new THREE.MeshPhongMaterial({color: 0xccfccc});
+		var material = new THREE.MeshLambertMaterial();
+		var textureLoader = new THREE.TextureLoader();
+		var tex_black = textureLoader.load('../materials/black_material.jpg');
+		var tex_floor = textureLoader.load('../materials/floor.jpg');
+		var tex_material = textureLoader.load('../materials/morpho_material.png');
+		fdtMaterial.map = tex_black;
+		fdtMaterial.map.repeat.set(1, 1);
+		fdtMaterial.map.wrapS = THREE.RepeatWrapping;
+		fdtMaterial.map.wrapT = THREE.RepeatWrapping;
+		planeMaterial.map = tex_floor;
+		planeMaterial.map.repeat.set(2,2);
+		planeMaterial.map.wrapS = THREE.RepeatWrapping;
+		planeMaterial.map.wrapT = THREE.RepeatWrapping;
+		material.map = tex_material;
+		material.map.repeat.set(1, 2);
+		material.map.wrapS = THREE.RepeatWrapping;
+		material.map.wrapT = THREE.RepeatWrapping;
+
+	//床オブジェクトを追加
+		var planeGeometry = new THREE.PlaneGeometry(100, 100);
+	  var plane = new THREE.Mesh(planeGeometry, planeMaterial);
+		plane.rotation.x = -0.5 * Math.PI; //法線がY軸方向となるよう回転
+		plane.position.y = -2;
+		plane.receiveShadow = true;
+		scene.add(plane);
+
+	//土台オブジェクトをシーンに追加
+	  var fdtGeometry = new THREE.BoxGeometry(14, 14, 4);
+	//Phong Materialに設定
+	  var foundation = new THREE.Mesh(fdtGeometry, fdtMaterial);
+	  foundation.rotation.x = -0.5 * Math.PI; //法線がY軸方向となるよう回転
+	  foundation.position.x = 0;
+	  foundation.position.y = 0;
+	  foundation.position.z = 0;
+	//影の生成先に指定
+	  foundation.receiveShadow = true;
+	  scene.add(foundation);
+
+	//オブジェクト同士の親子関係を作るためのグループ
+		group1 = new THREE.Group();
+		scene.add(group1);
+
+		group2 = new THREE.Group();
+		scene.add(group2);
+
+	//むねの初期化
+		var thoraxGeometry = new THREE.CylinderGeometry(0.7, 0.7, 2.5, 20, 20);
+		var thoraxMaterial = new THREE.MeshLambertMaterial({color: 0x2e2e2e, shininess:100});
+		var thoraxMesh = new THREE.Mesh(thoraxGeometry, thoraxMaterial);
+		thoraxMesh.rotation.x = -0.3*Math.PI;
+		thoraxMesh.position.z = -1;
+		thoraxMesh.position.y = 18;
+		thoraxMesh.castShadow = true;
+		thoraxMesh.receiveShadow = true;
+		scene.add(thoraxMesh);
+		thoraxMesh.add(group1);
+
+	//あたまの初期化
+		var headGeometry = new THREE.SphereGeometry( 0.8, 32, 32 );
+		var headMaterial = new THREE.MeshLambertMaterial( {color: 0x2e2e2e} );
+		var headMesh = new THREE.Mesh( headGeometry, headMaterial );
+		headMesh.position.y = 2;
+		headMesh.castShadow = true;
+		headMesh.receiveShadow = true;
+		scene.add(headMesh);
+		thoraxMesh.add(headMesh);
+		headMesh.add(group2);
+
+	//触覚の初期化
+		var tactileGeometry = new THREE.CylinderGeometry(0.1, 0.1, 2.5, 20, 20);
+		var tactileMaterial = new THREE.MeshLambertMaterial({color: 0x2e2e2e, shininess:100});
+		var tactileMesh = new THREE.Mesh(tactileGeometry, tactileMaterial);
+		tactileMesh.position.y = 1.7;
+		tactileMesh.position.x = 1;
+		tactileMesh.rotation.z = -Math.PI/8;
+		tactileMesh.castShadow = true;
+		tactileMesh.receiveShadow = true;
+		scene.add(tactileMesh);
+		headMesh.add(tactileMesh);
+
+	//触覚の初期化２
+		var tactile2Geometry = new THREE.CylinderGeometry(0.1, 0.1, 2.5, 20, 20);
+		var tactile2Material = new THREE.MeshLambertMaterial({color: 0x2e2e2e, shininess:100});
+		var tactile2Mesh = new THREE.Mesh(tactile2Geometry, tactile2Material);
+		tactile2Mesh.position.y = 1.7;
+		tactile2Mesh.position.x = -1;
+		tactile2Mesh.rotation.z = Math.PI/8;
+		tactile2Mesh.castShadow = true;
+		tactile2Mesh.receiveShadow = true;
+		scene.add(tactile2Mesh);
+		headMesh.add(tactile2Mesh);
+
+	//はらの初期化
+		var abdomentGeometry = new THREE.CylinderGeometry(0.5, 0.5, 3.5, 20, 20);
+		var abdomentMaterial = new THREE.MeshLambertMaterial({color: 0x2e2e2e, shininess:100});
+		abdomentGeometry.translate(0, -3/2, 0);
+		var abdomentMesh = new THREE.Mesh(abdomentGeometry, abdomentMaterial);
+		abdomentMesh.position.y = -1;
+		abdomentMesh.castShadow = true;
+		abdomentMesh.receiveShadow = true;
+		scene.add(abdomentMesh);
+		thoraxMesh.add(abdomentMesh);
+
+	//PLYLoaderによるデータ読み込み
+		//上右羽の読み込み
+	  var loader = new THREE.PLYLoader();
+
+		//Lambert Materialに設定
+		//var material = new THREE.MeshLambertMaterial();
+		//texture読み込み
+		//material.map = THREE.ImageUtils.loadTexture('../materials/morfo_material.png');
+
+	  loader.load("../models/butterfly_upperWing.ply", function (geometry) {
+	  	geometry.computeVertexNormals();
+	  	//var material = new THREE.MeshStandardMaterial({color:0x77ff77, shading:THREE.FlatShading, metalness:0.6, roughness:0.4});
+	  	upperWingR = new THREE.Mesh(geometry, material);
+			upperWingR.rotation.x = -0.5 * Math.PI;
+	  	upperWingR.rotation.y = 0;
+			upperWingR.rotation.z = 1.5 * Math.PI;
+			upperWingR.position.x = 0.2;
+			upperWingR.position.y = -3;
+	  	upperWingR.scale.multiplyScalar(5.0);
+
+	  	upperWingR.castShadow = true;
+	  	upperWingR.receiveShadow = true;
+
+			scene.add(upperWingR);
+			thoraxMesh.add(upperWingR);
+	  });
+
+
+		//上左羽の読み込み
+		loader.load("../models/butterfly_upperWing.ply", function (geometry) {
+	  	geometry.computeVertexNormals();
+	  	//var material = new THREE.MeshStandardMaterial({color:0x77ff77, shading:THREE.FlatShading, metalness:0.6, roughness:0.4});
+	  	upperWingL = new THREE.Mesh(geometry, material);
+			upperWingL.rotation.x = -0.5 * Math.PI;
+	  	upperWingL.rotation.y = 0;
+			upperWingL.rotation.z = 0.5 * Math.PI;
+			upperWingL.position.x = -0.2;
+			upperWingL.position.y = -3;
+	  	upperWingL.scale.multiplyScalar(5.0);
+
+	  	upperWingL.castShadow = true;
+	  	upperWingL.receiveShadow = true;
+
+			scene.add(upperWingL);
+			thoraxMesh.add(upperWingL);
+	  });
+
+		//下右羽の読み込み
+	  var loader = new THREE.PLYLoader();
+
+	  loader.load("../models/butterfly_lowerWing.ply", function (geometry) {
+	  	geometry.computeVertexNormals();
+	  	//var material = new THREE.MeshStandardMaterial({color:0x77ff77, shading:THREE.FlatShading, metalness:0.6, roughness:0.4});
+	  	lowerWingR = new THREE.Mesh(geometry, material);
+			lowerWingR.rotation.x = -0.5 * Math.PI;
+	  	lowerWingR.rotation.y = 0;
+			lowerWingR.rotation.z = 1.5 * Math.PI;
+			lowerWingR.position.x = -0.2;
+			lowerWingR.position.y = -3;
+	  	lowerWingR.scale.multiplyScalar(5.0);
+
+	  	lowerWingR.castShadow = true;
+	  	lowerWingR.receiveShadow = true;
+
+			scene.add(lowerWingR);
+			thoraxMesh.add(lowerWingR);
+	  });
+
+		//下左羽の読み込み
+		loader.load("../models/butterfly_lowerWing.ply", function (geometry) {
+	  	geometry.computeVertexNormals();
+	  	//var material = new THREE.MeshStandardMaterial({color:0x77ff77, shading:THREE.FlatShading, metalness:0.6, roughness:0.4});
+	  	lowerWingL = new THREE.Mesh(geometry, material);
+			lowerWingL.rotation.x = -0.5 * Math.PI;
+			lowerWingL.rotation.y = 0;
+			lowerWingL.rotation.z = 0.5 * Math.PI;
+			lowerWingL.position.x = 0.2;
+			lowerWingL.position.y = -3;
+	  	lowerWingL.scale.multiplyScalar(5.0);
+
+	  	lowerWingL.castShadow = true;
+	  	lowerWingL.receiveShadow = true;
+
+			scene.add(lowerWingL);
+			thoraxMesh.add(lowerWingL);
+	  });
+
+		//フォントの読み込み
+		const fontLoader = new THREE.FontLoader();
+
+		fontLoader.load( '../fonts/helvetiker_regular.typeface.json', function ( font ) {
+
+			const geometry = new THREE.TextGeometry( 'Morpho', {
+				font: font,
+				size: 2,
+				height: 0.25,
+				curveSegments: 12,
+				bevelEnabled: true,
+				bevelThickness: 0.1,
+				bevelSize: 0.05,
+				bevelOffset: 0.05,
+				bevelSegments: 1
+			} );
+			var textMaterial = new THREE.MeshPhongMaterial({color: 0xbf9224, shininess:50, metal:true});
+			textMesh = new THREE.Mesh(geometry, textMaterial);
+			textMesh.rotation.y = Math.PI;
+			textMesh.position.x = 4.5;
+			textMesh.position.y = -1;
+			textMesh.position.z = -7;
+			scene.add(textMesh);
+		} );
+
+	//カメラ位置設定：原点を見つめる
+	  camera.position.x = -20;
+	  camera.position.y = 10;
+	  camera.position.z = 30;
+	  camera.lookAt(scene.position);
+
+	//Orbit Controlsの設定
+	  var orbitControls = new THREE.OrbitControls(camera);
+	  orbitControls.autoRotate = false;
+		var clock = new THREE.Clock();
+
+	// Ambient Lightの設定
+	  ambientLight = new THREE.AmbientLight(0x0a0a0a,1);
+	  scene.add(ambientLight);
+
+	// 点光源の設定＆影を落とすように設定
+    var spotLight = new THREE.SpotLight(0xffffff, 2, 70, Math.PI / 6, 0, 0.3);
+    spotLight.position.set(0, 60, 0);
+    spotLight.castShadow = true;
+    scene.add(spotLight);
+		/*const lightHelper = new THREE.SpotLightHelper(spotLight);
+		scene.add(lightHelper);*/
+
+		var spotLight2 = new THREE.SpotLight(0xffffff, 3, 40, Math.PI / 6, 0, 0.3);
+		spotLight2.position.set(0, -5, -40);
+		spotLight2.target = thoraxMesh;
+		spotLight2.rotation.x = Math.PI/4;
+		scene.add(spotLight2);
+
+		var spotLight3 = new THREE.SpotLight(0xffffff, 3, 40, Math.PI / 6, 0, 0.3);
+		spotLight3.position.set(-20, -5, 20);
+		spotLight3.target = thoraxMesh;
+		spotLight3.rotation.x = Math.PI/4;
+		scene.add(spotLight3);
+
+		var spotLight4 = new THREE.SpotLight(0xffffff, 3, 40, Math.PI / 6, 0, 0.3);
+		spotLight4.position.set(20, -5, 20);
+		spotLight4.target = thoraxMesh;
+		spotLight4.rotation.x = Math.PI/4;
+		scene.add(spotLight4);
+
+	  document.getElementById("WebGL-output").appendChild(renderer.domElement);
+
+	//dat.GUIで更新されるプロパティ値を保持するためのオブジェクトを定義（デフォルト設定）
+    var controls = new function () {
+			this.uWR = 0.01;
+      this.uWL = -0.01;
+			this.lWR = -0.01;
+			this.lWL = 0.01;
+			this.abd = 0.00633;
+			this.height = 0.01268;
+			this.cameraHeight = 60;
+    };
+
+    var gui = new dat.GUI();
+		gui.add(controls, 'cameraHeight', 10, 60);
+
+		//render関数の呼び出し
+		var step = 0;
+		renderScene();
+
+		var uRsign = 1;
+		var uLsign = 1;
+		var lRsign = 1;
+		var lLsign = 1;
+
+	  function renderScene() {
+			if(upperWingR){
+				upperWingR.rotation.z += controls.uWR*uRsign;
+				if(upperWingR.rotation.z > 1.75*Math.PI){
+					uRsign = -1;
+				}else if(upperWingR.rotation.z < 1.25*Math.PI){
+					uRsign = 1;
+				}
+			}
+			if(upperWingL){
+				upperWingL.rotation.z += controls.uWL*uLsign;
+				if(upperWingL.rotation.z < 0.25*Math.PI){
+					uLsign = -1;
+				}else if(upperWingL.rotation.z > 0.75*Math.PI){
+					uLsign = 1;
+				}
+			}
+			if(lowerWingR){
+				lowerWingR.rotation.z += controls.lWR*lRsign;
+				if(lowerWingR.rotation.z > 1.75*Math.PI){
+					lRsign = 1;
+				}else if(lowerWingR.rotation.z < 1.25*Math.PI){
+					lRsign = -1;
+				}
+			}
+			if(lowerWingL){
+				lowerWingL.rotation.z += controls.lWL*lLsign;
+				if(lowerWingL.rotation.z < 0.25*Math.PI){
+					lLsign = 1;
+				}else if(lowerWingL.rotation.z > 0.75*Math.PI){
+					lLsign = -1;
+				}
+			}
+
+			if(abdomentMesh){
+				abdomentMesh.rotation.x += controls.abd*abdSign;
+				if(abdomentMesh.rotation.x < -0.5){
+					abdSign = 1;
+				}else if(abdomentMesh.rotation.x > 0.5){
+					abdSign = -1;
+				}else{
+					;
+				}
+			}
+
+			thoraxMesh.position.y -= controls.height*heightSign;
+			if(thoraxMesh.position.y < 17){
+				heightSign = -1;
+			}else if(thoraxMesh.position.y > 19){
+				heightSign = 1;
+			}else{
+				;
+			}
+
+		  camera.position.y = controls.cameraHeight;
+		  camera.lookAt(scene.position);
+
+			//OrbitControls
+		  var delta = clock.getDelta();
+		  orbitControls.update(delta);
+
+	    //requestAnimationを用いた描画
+	   	requestAnimationFrame(renderScene);
+	    renderer.render(scene, camera);
+	  }
+
+	};
+
+	//windowのリサイズ時の出力リサイズ
+	function onResize(){
+	  camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+	window.onload = init;
+    	//リサイズイベント発生時にonResizeを呼ぶよう設定
+  window.addEventListener('resize', onResize, false);
+</script>
+</body>
+
+</html>
